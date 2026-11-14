@@ -100,6 +100,7 @@ $serverResults = $chosenServers | foreach-object {
 
             $result = $(docker-compose `
                 --ansi never `
+                --project-directory $PSRootPath`
                 -f "servers/docker-compose.yml" `
                 -f "servers/$Server/docker-compose.yml" `
                 --env-file "scenarios/$Scenario.env" `
