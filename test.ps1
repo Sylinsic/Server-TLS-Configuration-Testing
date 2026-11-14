@@ -1,7 +1,9 @@
 param(
     [boolean]$ForceCheckAll = $false,
     [boolean]$CaptureOutput = $false,
-    [int]$ParallelScenarios = 8
+    [int]$ParallelScenarios = 8,
+    [string[]]$scenarios    = @(),
+    [string[]]$servers      = @()
 )
 
 function Get-ServerHash() {
@@ -27,32 +29,56 @@ $scenariosKey = "scenarios"
 
 $lastResults = (Get-Content -Path "results/latest.json" | ConvertFrom-Json)
 
-$scenarios = Get-ChildItem -Path $scenariosPath -Filter "*.env" | ForEach-Object {
+$chosenScenarios = Get-ChildItem -Path $scenariosPath -Filter "*.env" | ForEach-Object {
     $_.BaseName
 } | select-object -property `
     @{Name = "Name"; Expression = { $_ }},
     @{Name = "Hash"; Expression = { Get-FileHash (Join-Path $scenariosPath "${_}.env") | Select-Object -ExpandProperty Hash }}
 
+if ($chosenScenarios.Count -eq 0) {
+    Write-host "Unable to load scenarios from $scenariosPath"
+    return
+}
+if ($scenarios.Count -gt 0) {
+    $chosenScenarios = $chosenScenarios | where-object { $scenarios -icontains $_.Name }
+}
+if ($chosenScenarios.Count -eq 0) {
+    write-host "No scenarios within the selection criteria"
+    return
+}
 
 $results = @{}
 $results.$serversKey = @{}
-$results.$scenariosKey = $scenarios
+$results.$scenariosKey = $chosenScenarios
 
-$servers = Get-ChildItem -Path $serversPath -Directory | ForEach-Object {
+$chosenServers = Get-ChildItem -Path $serversPath -Directory | ForEach-Object {
     $_.Name
 } | select-object -property `
     @{Name = "Name"; Expression = { $_ }},
     @{Name = "Hash"; Expression = { Get-Serverhash -server $_ }}
 
-$servers | foreach-object {
+if ($chosenServers.Count -eq 0) {
+    Write-host "Unable to load servers from $serversPath"
+    return
+}
+if ($servers.Count -gt 0) {
+    $chosenServers = $chosenServers | where-object { $servers -icontains $_.Name }
+}
+if ($chosenServers.Count -eq 0) {
+    write-host "No servers within the selection criteria"
+    return
+}
+
+
+$chosenServers | foreach-object {
     $results.$serversKey.$($_.Name) = @{}
 }
 
 
-$serverResults = $servers | foreach-object {
+$serverResults = $chosenServers | foreach-object {
     $server = $_
 
-    $innerResults = $scenarios | foreach-object -throttlelimit $ParallelScenarios -parallel {
+    $innerResults = $chosenScenarios | foreach-object -throttlelimit $ParallelScenarios -parallel {
         $scenario = $_
         $server = $using:server
         
