@@ -1,5 +1,9 @@
 from itertools import product
 from enum import StrEnum
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(script_dir)
 
 class TrustStoreConfiguration(StrEnum):
     R = "R"
@@ -52,13 +56,13 @@ rows = [
 ]; 
 
 def get_individual_cert_path(cert: str) -> str:
-    return f"certs/{cert}/cert.crt"
+    return os.path.normpath(f"{parent_dir}/certs/{cert}/cert.crt")
 
 def get_chain_path(chain: str) -> str:
-    return f"certs/Chains/{chain}.crt"
+    return os.path.normpath(f"{parent_dir}/certs/Chains/{chain}.crt")
 
 def get_specific_chain_path(type: str,chain: str) -> str:
-    return f"certs/{type}/Chains/{chain}.crt"
+    return os.path.normpath(f"{parent_dir}/certs/{type}/Chains/{chain}.crt")
 
 RootCAName = "RootCA"
 Tier2CA1Name = "Tier2CA1"

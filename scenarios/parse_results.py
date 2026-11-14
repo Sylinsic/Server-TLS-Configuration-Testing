@@ -16,8 +16,8 @@ servers_key = "servers"
 status_key = "Status"
 success_value = "Success"
 
-with open("../results/latest.json", 'r') as results:
-    with open("OUTCOMES.md", 'w', encoding='utf-8', newline='') as scenarios:
+with open(os.path.normpath(f"{parent_dir}/results/latest.json"), 'r') as results:
+    with open(os.path.normpath(f"{script_dir}/OUTCOMES.md"), 'w', encoding='utf-8', newline='') as scenarios:
         scenarios.write('# Viable TLS configurations\n\n')
 
 

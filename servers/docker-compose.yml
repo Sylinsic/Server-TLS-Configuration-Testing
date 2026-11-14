@@ -13,6 +13,6 @@ services:
       exit 0 || 
       exit 1"
     volumes:
-      - ./${CLIENT_CERT}:/opt/certs/client.crt:ro
-      - ./${CLIENT_KEY}:/opt/certs/client.key:ro
-      - ./${CLIENT_CA}:/opt/certs/ca.crt:ro
+      - ${CLIENT_CERT}:/opt/certs/client.crt:ro
+      - ${CLIENT_KEY}:/opt/certs/client.key:ro
+      - ${CLIENT_CA}:/opt/certs/ca.crt:ro

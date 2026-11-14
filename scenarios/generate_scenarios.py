@@ -9,7 +9,7 @@ headers=[
     "Server presented certificates"
 ]
 
-with open("SCENARIOS.md", 'w', encoding='utf-8', newline='') as scenarios:
+with open(os.path.normpath(f"{script_dir}/SCENARIOS.md"), 'w', encoding='utf-8', newline='') as scenarios:
     scenarios.write('# TLS Testing Scenarios\n\n')
     scenarios.write('This document contains all the permutations of trust store and presented certificate configurations for TLS testing.\n\n')
 
@@ -26,16 +26,17 @@ with open("SCENARIOS.md", 'w', encoding='utf-8', newline='') as scenarios:
 
         scenarios.write(f'|{scenario_id}|{client_trust_store}|{client_presented_certificates}|{server_trust_store}|{server_presented_certificates}|\n')
 
-        with open(f'{scenario_id}.env', 'w', encoding='utf-8') as env_file:
+        with open(os.path.normpath(f'{script_dir}/{scenario_id}.env'), 'w', encoding='utf-8') as env_file:
             env_file.writelines([
+                f'BASE_DIR={os.path.normpath(parent_dir)}\n',
                 f'CLIENT_CA={get_trust_store_path(permutation[0])}\n',
                 f'CLIENT_CERT={get_presented_certificates_path(ClientName, permutation[1])}\n',
-                'CLIENT_KEY=certs/Client/cert.key\n',
-                'CLIENT_ROOT=certs/RootCA/cert.crt\n',
+                f'CLIENT_KEY={os.path.normpath(parent_dir + "certs/Client/cert.key")}\n',
+                f'CLIENT_ROOT={os.path.normpath(parent_dir + "/certs/RootCA/cert.crt")}\n',
                 f'SERVER_CA={get_trust_store_path(permutation[2])}\n',
                 f'SERVER_CERT={get_presented_certificates_path(ServerName, permutation[3])}\n',
-                'SERVER_KEY=certs/Server/cert.key\n',
-                'SERVER_ROOT=certs/RootCA/cert.crt\n'
+                f'SERVER_KEY={os.path.normpath(parent_dir + "/certs/Server/cert.key")}\n',
+                f'SERVER_ROOT={os.path.normpath(parent_dir + "/certs/RootCA/cert.crt")}\n'
             ])
 
 print(f'Created {len(permutations)} scenarios')

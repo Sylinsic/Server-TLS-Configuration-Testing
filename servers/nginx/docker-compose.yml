@@ -2,11 +2,11 @@ services:
   server:
     image: nginx:latest
     volumes:
-      - ./${SERVER_CERT}:/opt/certs/server.crt:ro
-      - ./${SERVER_KEY}:/opt/certs/server.key:ro
-      - ./${SERVER_CA}:/opt/certs/ca.crt:ro
-      - ./servers/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./servers/index.html:/usr/share/nginx/html/index.html:ro
+      - ${SERVER_CERT}:/opt/certs/server.crt:ro
+      - ${SERVER_KEY}:/opt/certs/server.key:ro
+      - ${SERVER_CA}:/opt/certs/ca.crt:ro
+      - ${BASE_DIR}/servers/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${BASE_DIR}/servers/index.html:/usr/share/nginx/html/index.html:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost"]
       interval: 0.1s
