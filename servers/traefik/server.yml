@@ -1,0 +1,35 @@
+http:
+  # Add the router
+  routers:
+    server-http:
+      entryPoints:
+      - web
+      service: backend
+      rule: Path(`/`)
+    server-https:
+      entryPoints:
+      - websecure
+      service: backend
+      rule: Path(`/`)
+      tls: {}
+
+  # Add the service
+  services:
+    backend:
+      loadBalancer:
+        servers:
+        - url: http://backend/
+
+tls:
+  options:
+    default:
+      clientAuth:
+        clientAuthType: RequireAndVerifyClientCert
+        caFiles:
+          - /opt/certs/ca.crt
+
+  certificates:
+    - certFile: /opt/certs/server.crt
+      keyFile: /opt/certs/server.key
+      stores:
+        - default
