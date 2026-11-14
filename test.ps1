@@ -50,6 +50,7 @@ if ($chosenScenarios.Count -eq 0) {
 $results = @{}
 $results.$serversKey = @{}
 $results.$scenariosKey = $chosenScenarios
+$results.commandline = $MyInvocation.Line
 
 $chosenServers = Get-ChildItem -Path $serversPath -Directory | ForEach-Object {
     $_.Name

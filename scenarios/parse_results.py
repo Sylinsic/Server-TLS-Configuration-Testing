@@ -19,9 +19,13 @@ success_value = "Success"
 with open(os.path.normpath(f"{parent_dir}/results/latest.json"), 'r') as results:
     with open(os.path.normpath(f"{script_dir}/OUTCOMES.md"), 'w', encoding='utf-8', newline='') as scenarios:
         scenarios.write('# Viable TLS configurations\n\n')
-
-
         decoded = json.load(results)
+
+        scenarios.write('This report was generated from the data output by the following command\n')
+        scenarios.write('```sh\n')
+        scenarios.write(decoded["commandline"] + '\n')
+        scenarios.write('```\n\n')
+
         for server in decoded[servers_key]:
             scenarios.write(f'## {server}\n\n')
 
