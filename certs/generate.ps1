@@ -3,7 +3,7 @@
 
 param(
     [string]$OutputDirectory = $PSScriptRoot,
-    [string]$DnsName = "server.example.com"
+    [string]$DnsName = "server"
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,7 +24,10 @@ $Directories = @(
     "RootCA",
     "IntermediateCA1",
     "IntermediateCA2",
-    "EndEntity",
+    "Server",
+    "Server\Chains",
+    "Client",
+    "Client\Chains",
     "Chains"
 )
 
@@ -49,8 +52,9 @@ function Invoke-OpenSSL {
 $Root = "$OutputDirectory\RootCA"
 $Int1 = "$OutputDirectory\IntermediateCA1"
 $Int2 = "$OutputDirectory\IntermediateCA2"
-$Leaf = "$OutputDirectory\EndEntity"
-$Chains = "$Chains"
+$Server = "$OutputDirectory\Server"
+$Client = "$OutputDirectory\Client"
+$Chains = "$OutputDirectory\Chains"
 
 Write-Host "`n=== FOUR TIER PKI CREATION ===" -ForegroundColor Cyan
 
@@ -58,7 +62,7 @@ Write-Host "`n=== FOUR TIER PKI CREATION ===" -ForegroundColor Cyan
 # TIER 1: ROOT CA
 # --------------------------------------------------
 
-Write-Host "`n[1/4] Generating Root CA..." -ForegroundColor Yellow
+Write-Host "`n[1/5] Generating Root CA..." -ForegroundColor Yellow
 
 $RootConfig = @'
 [req]
@@ -95,7 +99,7 @@ Write-Host "Root CA created." -ForegroundColor Green
 # TIER 2: INTERMEDIATE CA 1
 # --------------------------------------------------
 
-Write-Host "`n[2/4] Generating Intermediate CA 1..." -ForegroundColor Yellow
+Write-Host "`n[2/5] Generating Intermediate CA 1..." -ForegroundColor Yellow
 
 Invoke-OpenSSL @(
     "genpkey", "-algorithm", "RSA",
@@ -139,7 +143,7 @@ Write-Host "Intermediate CA 1 created." -ForegroundColor Green
 # TIER 3: INTERMEDIATE CA 2
 # --------------------------------------------------
 
-Write-Host "`n[3/4] Generating Intermediate CA 2..." -ForegroundColor Yellow
+Write-Host "`n[3/5] Generating Intermediate CA 2..." -ForegroundColor Yellow
 
 Invoke-OpenSSL @(
     "genpkey", "-algorithm", "RSA",
@@ -180,25 +184,25 @@ Invoke-OpenSSL @(
 Write-Host "Intermediate CA 2 created." -ForegroundColor Green
 
 # --------------------------------------------------
-# TIER 4: END ENTITY CERTIFICATE
+# TIER 4: SERVER CERTIFICATE
 # --------------------------------------------------
 
-Write-Host "`n[4/4] Generating End Entity..." -ForegroundColor Yellow
+Write-Host "`n[4/5] Generating Server Certificate..." -ForegroundColor Yellow
 
 Invoke-OpenSSL @(
     "genpkey", "-algorithm", "RSA",
     "-pkeyopt", "rsa_keygen_bits:2048",
-    "-out", "$Leaf\cert.key"
+    "-out", "$Server\cert.key"
 )
 
 Invoke-OpenSSL @(
     "req", "-new",
-    "-key", "$Leaf\cert.key",
-    "-out", "$Leaf\cert.csr",
+    "-key", "$Server\cert.key",
+    "-out", "$Server\cert.csr",
     "-subj", "/CN=$DnsName/O=Example PKI"
 )
 
-$LeafConfig = @"
+$ServerConfig = @"
 [v3_end_entity]
 basicConstraints = critical,CA:FALSE
 keyUsage = critical,digitalSignature,keyEncipherment
@@ -208,22 +212,69 @@ authorityKeyIdentifier = keyid,issuer
 subjectAltName = DNS:$DnsName
 "@
 
-$LeafConfig | Set-Content "$Leaf\cert.cnf" -Encoding ASCII
+$ServerConfig | Set-Content "$Server\cert.cnf" -Encoding ASCII
 
 Invoke-OpenSSL @(
     "x509", "-req",
-    "-in", "$Leaf\cert.csr",
+    "-in", "$Server\cert.csr",
     "-CA", "$Int2\cert.crt",
     "-CAkey", "$Int2\cert.key",
     "-CAcreateserial",
-    "-out", "$Leaf\cert.crt",
+    "-out", "$Server\cert.crt",
     "-days", "$EndEntityDays",
     "-sha256",
-    "-extfile", "$Leaf\cert.cnf",
+    "-extfile", "$Server\cert.cnf",
     "-extensions", "v3_end_entity"
 )
 
-Write-Host "End Entity created." -ForegroundColor Green
+Write-Host "Server Certificate created." -ForegroundColor Green
+
+
+# --------------------------------------------------
+# TIER 5: CLIENT CERTIFICATE
+# --------------------------------------------------
+
+Write-Host "`n[5/5] Generating Client Certificate..." -ForegroundColor Yellow
+
+Invoke-OpenSSL @(
+    "genpkey", "-algorithm", "RSA",
+    "-pkeyopt", "rsa_keygen_bits:2048",
+    "-out", "$Client\cert.key"
+)
+
+Invoke-OpenSSL @(
+    "req", "-new",
+    "-key", "$Client\cert.key",
+    "-out", "$Client\cert.csr",
+    "-subj", "/CN=My Client/O=Example PKI"
+)
+
+$ClientConfig = @"
+[v3_end_entity]
+basicConstraints = critical,CA:FALSE
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = clientAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+"@
+
+$ClientConfig | Set-Content "$Client\cert.cnf" -Encoding ASCII
+
+Invoke-OpenSSL @(
+    "x509", "-req",
+    "-in", "$Client\cert.csr",
+    "-CA", "$Int2\cert.crt",
+    "-CAkey", "$Int2\cert.key",
+    "-CAcreateserial",
+    "-out", "$Client\cert.crt",
+    "-days", "$EndEntityDays",
+    "-sha256",
+    "-extfile", "$Client\cert.cnf",
+    "-extensions", "v3_end_entity"
+)
+
+Write-Host "Client Certificate created." -ForegroundColor Green
+
 
 # --------------------------------------------------
 # CREATE CERTIFICATE CHAIN
@@ -234,35 +285,60 @@ Write-Host "`nCreating certificate chain..." -ForegroundColor Yellow
 $rootCert = Get-Content "$Root\cert.crt" -Raw
 $Int1Cert = Get-Content "$Int1\cert.crt" -Raw
 $Int2Cert = Get-Content "$Int2\cert.crt" -Raw
-$LeafCert = Get-Content "$Leaf\cert.crt" -Raw
+$ServerCert = Get-Content "$Server\cert.crt" -Raw
+$ClientCert = Get-Content "$Client\cert.crt" -Raw
 
 [System.IO.File]::WriteAllText(
-    "$Chains\root-and-int1.crt",
-    $rootCert + $Int1Cert,
+    "$Server\Chains\full.crt",
+    $ServerCert + $Int2Cert + $Int1Cert + $rootCert,
     [System.Text.Encoding]::ASCII
 )
 
 [System.IO.File]::WriteAllText(
-    "$Chains\root-and-intermediates.crt",
-    $rootCert + $Int1Cert + $Int2Cert,
+    "$Server\Chains\intermediates.crt",
+    $ServerCert + $Int2Cert + $Int1Cert,
+    [System.Text.Encoding]::ASCII
+)
+
+[System.IO.File]::WriteAllText(
+    "$Server\Chains\issuer.crt",
+    $ServerCert + $Int2Cert,
+    [System.Text.Encoding]::ASCII
+)
+
+[System.IO.File]::WriteAllText(
+    "$Client\Chains\full.crt",
+    $ClientCert + $Int2Cert + $Int1Cert + $rootCert,
+    [System.Text.Encoding]::ASCII
+)
+
+[System.IO.File]::WriteAllText(
+    "$Client\Chains\intermediates.crt",
+    $ClientCert + $Int2Cert + $Int1Cert,
+    [System.Text.Encoding]::ASCII
+)
+
+[System.IO.File]::WriteAllText(
+    "$Client\Chains\issuer.crt",
+    $ClientCert + $Int2Cert,
     [System.Text.Encoding]::ASCII
 )
 
 [System.IO.File]::WriteAllText(
     "$Chains\full.crt",
-    $rootCert + $Int1Cert + $Int2Cert + $LeafCert,
+    $Int2Cert + $Int1Cert + $rootCert,
     [System.Text.Encoding]::ASCII
 )
 
 [System.IO.File]::WriteAllText(
     "$Chains\intermediates.crt",
-    $Int1Cert + $Int2Cert,
+    $Int2Cert + $Int1Cert,
     [System.Text.Encoding]::ASCII
 )
 
 [System.IO.File]::WriteAllText(
-    "$Chains\intermediates-and-leaf.crt",
-    $Int1Cert + $Int2Cert + $LeafCert,
+    "$Chains\issuer.crt",
+    $Int2Cert,
     [System.Text.Encoding]::ASCII
 )
 
@@ -276,7 +352,7 @@ Invoke-OpenSSL @(
     "verify",
     "-CAfile", "$Root\cert.crt",
     "-untrusted", "$Chains\intermediates.crt",
-    "$Leaf\cert.crt"
+    "$Server\cert.crt"
 )
 
 # --------------------------------------------------
@@ -305,7 +381,7 @@ Invoke-OpenSSL @(
 
 Write-Host "`nEnd Entity:"
 Invoke-OpenSSL @(
-    "x509", "-in", "$Leaf\cert.crt",
+    "x509", "-in", "$Server\cert.crt",
     "-noout", "-subject", "-issuer", "-dates"
 )
 
