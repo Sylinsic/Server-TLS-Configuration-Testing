@@ -6,7 +6,7 @@ services:
       - ./${SERVER_KEY}:/opt/certs/server.key:ro
       - ./${SERVER_CA}:/opt/certs/ca.crt:ro
       - ./servers/httpd/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
-      - ./index.html:/usr/local/apache2/htdocs/index.html:ro
+      - ./servers/index.html:/usr/local/apache2/htdocs/index.html:ro
     healthcheck:
       test: bash -c ':> /dev/tcp/127.0.0.1/80' || exit 1
       interval: 0.5s

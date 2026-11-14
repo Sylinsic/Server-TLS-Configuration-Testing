@@ -100,7 +100,7 @@ $serverResults = $chosenServers | foreach-object {
 
             $result = $(docker-compose `
                 --ansi never `
-                -f "docker-compose.yml" `
+                -f "servers/docker-compose.yml" `
                 -f "servers/$Server/docker-compose.yml" `
                 --env-file "scenarios/$Scenario.env" `
                 -p "$($Server.ToLower())-$($Scenario.ToLower())" `
