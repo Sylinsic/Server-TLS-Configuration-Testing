@@ -1,0 +1,14 @@
+services:
+  server:
+    image: caddy:latest
+    volumes:
+      - ${SERVER_CERT}:/opt/certs/server.crt:ro
+      - ${SERVER_KEY}:/opt/certs/server.key:ro
+      - ${SERVER_CA}:/opt/certs/ca.crt:ro
+      - ${BASE_DIR}/servers/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${BASE_DIR}/servers/index.html:/srv/index.html:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 0.5s
+      timeout: 0.2s
+      retries: 3

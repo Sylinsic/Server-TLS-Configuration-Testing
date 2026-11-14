@@ -1,0 +1,16 @@
+http://server {
+	root * /srv
+	file_server
+}
+
+https://server {
+	tls /opt/certs/server.crt /opt/certs/server.key {
+		client_auth {
+			mode require_and_verify
+			trust_pool file /opt/certs/ca.crt
+		}
+	}
+
+	root * /srv
+	file_server
+}
