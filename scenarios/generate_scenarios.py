@@ -31,9 +31,11 @@ with open("SCENARIOS.md", 'w', encoding='utf-8', newline='') as scenarios:
                 f'CLIENT_CA={get_trust_store_path(permutation[0])}\n',
                 f'CLIENT_CERT={get_presented_certificates_path(ClientName, permutation[1])}\n',
                 'CLIENT_KEY=certs/Client/cert.key\n',
+                'CLIENT_ROOT=certs/RootCA/cert.crt\n',
                 f'SERVER_CA={get_trust_store_path(permutation[2])}\n',
                 f'SERVER_CERT={get_presented_certificates_path(ServerName, permutation[3])}\n',
-                'SERVER_KEY=certs/Server/cert.key\n'
+                'SERVER_KEY=certs/Server/cert.key\n',
+                'SERVER_ROOT=certs/RootCA/cert.crt\n'
             ])
 
 print(f'Created {len(permutations)} scenarios')
