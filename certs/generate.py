@@ -33,6 +33,10 @@ def parse_args() -> argparse.Namespace:
         "--openssl",
         help="OpenSSL executable (default: find openssl on PATH)",
     )
+    parser.add_argument(
+        "--keytool",
+        help="keytool executable (default: find keytool on PATH)",
+    )
     return parser.parse_args()
 
 def print_indented(to_print, indent = 1):
@@ -40,10 +44,53 @@ def print_indented(to_print, indent = 1):
         print("\t"*indent + to_print.replace("\n", "\n" + "\t"*indent))
 
 def run_openssl(openssl: str, *arguments: str) -> None:
-    p = subprocess.run([openssl, *arguments], check=True, capture_output=True)
+    p = subprocess.run([openssl, *arguments], check=True, capture_output=True, text=True)
     p.check_returncode()
-    print_indented(p.stdout.decode('utf-8'))
-    print_indented(p.stderr.decode('utf-8'))
+    print_indented(p.stdout)
+    print_indented(p.stderr)
+
+
+def create_java_truststore(
+    keytool: str,
+    output_path: Path,
+    certificates: tuple[tuple[str, Path], ...],
+) -> None:
+    for alias, certificate in certificates:
+        subprocess.run(
+            [
+                keytool,
+                "-delete",
+                "-alias",
+                alias,
+                "-keystore",
+                str(output_path),
+                "-storetype",
+                "PKCS12",
+                "-storepass",
+                PKCS12_PASSWORD,
+            ]
+        )
+        p = subprocess.run(
+            [
+                keytool,
+                "-importcert",
+                "-noprompt",
+                "-alias",
+                alias,
+                "-file",
+                str(certificate),
+                "-keystore",
+                str(output_path),
+                "-storetype",
+                "PKCS12",
+                "-storepass",
+                PKCS12_PASSWORD,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        print_indented(p.stdout)
+        print_indented(p.stderr)
 
 def write_config(path: Path, contents: str) -> None:
     path.write_text(contents, encoding="ascii")
@@ -275,6 +322,14 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+    keytool = args.keytool or shutil.which("keytool")
+    if keytool is None:
+        print(
+            "keytool not found. Install a JDK and add keytool to PATH, "
+            "or specify it with --keytool.",
+            file=sys.stderr,
+        )
+        return 1
 
     output = args.output_directory
     root = output / "RootCA"
@@ -367,7 +422,8 @@ def main() -> int:
     print("\nCreating certificate chain...")
     root_certificate = root / "cert.crt"
     tier2_certificate = tier2 / "cert.crt"
-    tier3_certificate = tier3a / "cert.crt"
+    tier3a_certificate = tier3a / "cert.crt"
+    tier3b_certificate = tier3b / "cert.crt"
     server_certificate = server / "cert.crt"
     client_certificate = client / "cert.crt"
 
@@ -378,21 +434,48 @@ def main() -> int:
         write_chain(
             directory / "full.crt",
             leaf_certificate,
-            tier3_certificate,
+            tier3a_certificate,
             tier2_certificate,
             root_certificate,
         )
         write_chain(
             directory / "intermediates.crt",
             leaf_certificate,
-            tier3_certificate,
+            tier3a_certificate,
             tier2_certificate,
         )
-        write_chain(directory / "issuer.crt", leaf_certificate, tier3_certificate)
+        write_chain(directory / "issuer.crt", leaf_certificate, tier3a_certificate)
 
-    write_chain(chains / "full.crt", tier3_certificate, tier2_certificate, root_certificate)
-    write_chain(chains / "intermediates.crt", tier3_certificate, tier2_certificate)
-    write_chain(chains / "issuer.crt", tier3_certificate)
+    write_chain(chains / "full.crt", tier3a_certificate, tier2_certificate, root_certificate)
+    write_chain(chains / "intermediates.crt", tier3a_certificate, tier2_certificate)
+    write_chain(chains / "issuer.crt", tier3a_certificate)
+
+    print("\nCreating Java PKCS#12 truststores...")
+    for name, certificates in (
+        (
+            "full",
+            (
+                ("tier3ca1", tier3a_certificate),
+                ("tier3ca2", tier3b_certificate),
+                ("tier2ca1", tier2_certificate),
+                ("rootca", root_certificate),
+            )
+        ),
+        (
+            "intermediates",
+            (
+                ("tier3ca1", tier3a_certificate), 
+                ("tier2ca1", tier2_certificate),
+            )
+        ),
+        (
+            "issuer", 
+            (
+                ("tier3ca1", tier3a_certificate),
+            )
+        )
+    ):
+        create_java_truststore(keytool, f"{chains}/{name}.p12", certificates)
 
     print("\nCreating PKCS#12 files...")
     create_pkcs12_files(
@@ -427,7 +510,7 @@ def main() -> int:
     for label, certificate, include_dates in (
         ("Root CA", root_certificate, True),
         ("Intermediate CA 1", tier2_certificate, False),
-        ("Intermediate CA 2", tier3_certificate, False),
+        ("Intermediate CA 2", tier3a_certificate, False),
         ("Server", server_certificate, True),
         ("Client", client_certificate, True),
     ):
@@ -446,7 +529,7 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except subprocess.CalledProcessError as error:
         print(
-            f"OpenSSL command failed with exit code {error.returncode}: "
+            f"Command failed with exit code {error.returncode}: "
             f"{subprocess.list2cmdline(error.cmd)}",
             file=sys.stderr,
         )
