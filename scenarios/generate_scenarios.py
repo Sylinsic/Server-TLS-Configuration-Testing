@@ -36,6 +36,8 @@ with open(os.path.normpath(f"{script_dir}/SCENARIOS.md"), 'w', encoding='utf-8',
                 f'SERVER_CA={get_trust_store_path(permutation[2])}\n',
                 f'SERVER_CERT={get_presented_certificates_path(ServerName, permutation[3])}\n',
                 f'SERVER_KEY={os.path.normpath(parent_dir + "/certs/Server/cert.key")}\n',
+                f'SERVER_P12={get_presented_pkcs12_path(ServerName, permutation[3])}\n'
+                f'SERVER_P12_PASSWORD=password\n'
                 f'SERVER_ROOT={os.path.normpath(parent_dir + "/certs/RootCA/cert.crt")}\n'
             ])
 

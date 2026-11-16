@@ -64,6 +64,9 @@ def get_chain_path(chain: str) -> str:
 def get_specific_chain_path(type: str,chain: str) -> str:
     return os.path.normpath(f"{parent_dir}/certs/{type}/Chains/{chain}.crt")
 
+def get_specific_pkcs12_path(type: str,chain: str) -> str:
+    return os.path.normpath(f"{parent_dir}/certs/{type}/Chains/{chain}.p12")
+
 RootCAName = "RootCA"
 Tier2CA1Name = "Tier2CA1"
 Tier3CA1Name = "Tier3CA1"
@@ -74,6 +77,7 @@ ClientName = "Client"
 FullChainName = "full"
 IntermediatesChainName = "intermediates"
 IssuerChainName = "issuer"
+LeafName = "leaf"
 
 def get_trust_store_path(trust_store_configuration: TrustStoreConfiguration) -> str:
     if trust_store_configuration == TrustStoreConfiguration.R:
@@ -96,3 +100,13 @@ def get_presented_certificates_path(type: str, presentedCertificatesConfiguratio
         return get_specific_chain_path(type, IssuerChainName)
     elif presentedCertificatesConfiguration == PresentedCertificatesConfiguration.L:
         return get_individual_cert_path(type)
+
+def get_presented_pkcs12_path(type: str, presentedCertificatesConfiguration: PresentedCertificatesConfiguration) -> str:
+    if presentedCertificatesConfiguration == PresentedCertificatesConfiguration.F:
+        return get_specific_pkcs12_path(type, FullChainName)
+    elif presentedCertificatesConfiguration == PresentedCertificatesConfiguration.LIn:
+        return get_specific_pkcs12_path(type, IntermediatesChainName)
+    elif presentedCertificatesConfiguration == PresentedCertificatesConfiguration.LIs:
+        return get_specific_pkcs12_path(type, IssuerChainName)
+    elif presentedCertificatesConfiguration == PresentedCertificatesConfiguration.L:
+        return get_specific_pkcs12_path(type, LeafName)

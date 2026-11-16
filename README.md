@@ -3,21 +3,32 @@
 ## Pre-requisites
 
 - docker
+- docker-compose
 - python 3.11 or above
+- openssl
 
 ## How-To
 
-1. Generate the possible scenario configuration files
+1. Generate the test certificates (requires OpenSSL)
+   ```sh
+   python3 certs/generate.py
+   ```
+
+2. Generate the possible scenario configuration files
    ```sh
    python3 scenarios/generate_scenarios.py
    ```
 
-2. Run the test suite
-   ```pwsh
-   ./test.ps1
+3. Run the test suite
+   ```sh
+   python3 ./test.py
    ```
 
-3. Parse the test results
+   You can specify specific scenarios using `--scenarios`
+   You can specify specific servers using `--servers`
+   You can capture failure output using `--capture-output`
+
+4. Parse the test results
    ```sh
    python3 scenarios/parse_results.py
    ```
